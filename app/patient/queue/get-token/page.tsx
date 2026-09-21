@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { PortalSidebar } from '@/components/layout/PortalSidebar';
@@ -9,7 +9,7 @@ import { globalQueueStore } from '@/lib/queue/engine';
 import { Token, TokenPriority } from '@/types/queue';
 import { Ticket, ArrowRight, ArrowLeft, CheckCircle2, ShieldAlert, Sparkles, Stethoscope, UserCheck } from 'lucide-react';
 
-export default function GetTokenPage() {
+function GetTokenContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialDeptCode = searchParams.get('dept') || 'GM';
@@ -309,5 +309,13 @@ export default function GetTokenPage() {
         )}
       </main>
     </div>
+  );
+}
+
+export default function GetTokenPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-500 font-bold text-sm">Loading Token Generator...</div>}>
+      <GetTokenContent />
+    </Suspense>
   );
 }

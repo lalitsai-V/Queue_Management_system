@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Navbar } from '@/components/layout/Navbar';
@@ -8,7 +8,7 @@ import { Footer } from '@/components/layout/Footer';
 import { Hospital, LogIn, Mail, Lock, ShieldCheck, UserCheck, User } from 'lucide-react';
 import { UserRole } from '@/types/queue';
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectUrl = searchParams.get('redirect');
@@ -195,5 +195,13 @@ export default function LoginPage() {
 
       <Footer />
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-500 font-bold text-sm">Loading Login Portal...</div>}>
+      <LoginForm />
+    </Suspense>
   );
 }
