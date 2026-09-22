@@ -3,13 +3,14 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { PortalSidebar } from '@/components/layout/PortalSidebar';
+import { MobileNav } from '@/components/layout/MobileNav';
 import { QueueTimeline } from '@/components/queue/QueueTimeline';
 import { WaitingTimeCard } from '@/components/queue/WaitingTimeCard';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { PriorityBadge } from '@/components/ui/PriorityBadge';
 import { globalQueueStore } from '@/lib/queue/engine';
 import { playHospitalChime } from '@/lib/audio/chime';
-import { Ticket, Clock, Calendar, Bell, ArrowRight, Volume2, Sparkles } from 'lucide-react';
+import { Ticket, Clock, Calendar, Bell, ArrowRight, Volume2, Sparkles, User, Building2, Activity, CheckCircle2, ChevronRight } from 'lucide-react';
 
 export default function PatientDashboard() {
   const [tokens, setTokens] = useState([...globalQueueStore.tokens]);
@@ -18,7 +19,6 @@ export default function PatientDashboard() {
 
   const { patientsAhead, position } = globalQueueStore.getPatientsAhead(patientToken?.display_token || 'GM-029', 'doc-sharma');
   const estimatedWait = globalQueueStore.calculateWaitTimeMinutes(patientsAhead, 8);
-
   const isCalled = patientToken?.status === 'CALLED';
 
   const handleSimulateCall = () => {
@@ -29,169 +29,255 @@ export default function PatientDashboard() {
     }
   };
 
-  return (
-    <div className="min-h-screen flex bg-slate-50 font-sans">
-      <PortalSidebar role="PATIENT" userName="Rohan Mehta" userEmail="rohan.mehta@gmail.com" />
+  const recentActivity = [
+    { token: 'Token A023', dept: 'General Medicine', time: '10:15 AM', date: 'Today', status: 'WAITING' as const },
+    { token: 'Token B104', dept: 'Cardiology', time: '02:30 PM', date: '18 Sep 2026', status: 'COMPLETED' as const },
+    { token: 'Token C078', dept: 'Dermatology', time: '11:00 AM', date: '15 Sep 2026', status: 'COMPLETED' as const },
+  ];
 
-      <main className="flex-1 p-6 lg:p-10 overflow-y-auto space-y-8 max-w-7xl">
-        {/* Welcome Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-sky-600 via-blue-600 to-indigo-700 rounded-3xl p-8 text-white shadow-xl relative overflow-hidden">
-          <div className="relative z-10 space-y-2">
-            <span className="px-3 py-1 rounded-full bg-white/20 text-white font-bold text-xs backdrop-blur-md inline-flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-amber-300" /> Hospital Patient Portal
-            </span>
-            <h1 className="text-3xl font-black tracking-tight">Good Morning, Rohan Mehta!</h1>
-            <p className="text-sky-100 text-sm font-medium">
-              Track your token live and manage your hospital visits conveniently.
+  return (
+    <div className="min-h-screen flex bg-slate-50 font-sans pb-16 md:pb-0">
+      <PortalSidebar role="PATIENT" userName="Lalit" userEmail="lalit@example.com" />
+
+      <main className="flex-1 p-4 sm:p-6 lg:p-10 overflow-y-auto space-y-8 max-w-7xl">
+        {/* Top Header / Greeting */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                Welcome back, Lalit 👋
+              </h1>
+            </div>
+            <p className="text-slate-500 font-medium text-xs sm:text-sm mt-0.5">
+              Take control of your healthcare journey.
             </p>
           </div>
 
-          <div className="relative z-10 flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-3">
             <button
               onClick={handleSimulateCall}
-              className="px-4 py-3 rounded-2xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs shadow-lg flex items-center gap-1.5 transition-all hover:scale-105"
+              className="px-4 py-2.5 rounded-2xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs shadow-md flex items-center gap-1.5 transition-all cursor-pointer"
             >
-              <Volume2 className="w-4 h-4 text-slate-950" /> Test Call Chime 🔔
+              <Volume2 className="w-4 h-4 text-slate-950" /> Test Chime 🔔
             </button>
 
             <Link
               href="/patient/queue/get-token"
-              className="px-6 py-3 rounded-2xl bg-white hover:bg-sky-50 text-slate-900 font-extrabold text-xs shadow-lg flex items-center gap-2 transition-all hover:scale-105"
+              className="px-5 py-2.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs shadow-md shadow-blue-600/20 flex items-center gap-2 transition-all cursor-pointer"
             >
-              <Ticket className="w-4 h-4 text-sky-600" /> Get New Token
+              <Ticket className="w-4 h-4" /> Book Token
             </Link>
           </div>
         </div>
 
-        {/* Called Alert Modal Banner if Patient Token Called */}
+        {/* Turn Approaching Alert Banner */}
         {isCalled && (
-          <div className="bg-sky-500 text-white rounded-3xl p-6 shadow-2xl animate-pulse flex flex-col sm:flex-row items-center justify-between gap-4 border-4 border-sky-300">
+          <div className="bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-3xl p-6 shadow-2xl animate-pulse flex flex-col sm:flex-row items-center justify-between gap-4 border-4 border-blue-300">
             <div className="flex items-center gap-4 text-center sm:text-left">
-              <div className="w-14 h-14 rounded-2xl bg-white text-sky-600 flex items-center justify-center font-black text-2xl shadow-md shrink-0">
+              <div className="w-14 h-14 rounded-2xl bg-white text-blue-600 flex items-center justify-center font-black text-2xl shadow-md shrink-0">
                 <Volume2 className="w-8 h-8 animate-bounce" />
               </div>
               <div>
-                <h2 className="text-2xl font-black">YOUR TURN IS HERE!</h2>
-                <p className="text-sm font-bold text-sky-100">
-                  Please proceed immediately to Consultation Room 102 (Dr. Rajesh Sharma).
+                <h2 className="text-2xl font-black">YOUR TURN HAS ARRIVED!</h2>
+                <p className="text-xs font-bold text-blue-100 mt-1">
+                  Please proceed immediately to Room 102 (General Medicine - Dr. Rajesh Sharma).
                 </p>
               </div>
             </div>
             <Link
               href="/patient/queue"
-              className="px-6 py-3 rounded-2xl bg-white text-sky-700 font-black text-xs hover:bg-sky-50 transition-all shadow-md shrink-0"
+              className="px-6 py-3 rounded-2xl bg-white text-blue-700 font-black text-xs hover:bg-blue-50 transition-all shadow-md shrink-0 cursor-pointer"
             >
-              View Room Guide →
+              Live Queue View →
             </Link>
           </div>
         )}
 
-        {/* MAIN ACTIVE QUEUE CARD */}
+        {/* TOP STATISTICS CARDS */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {/* Card 1: Current Token */}
+          <div className="bg-gradient-to-br from-blue-600 to-indigo-700 text-white rounded-3xl p-6 shadow-xl space-y-2 relative overflow-hidden">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-extrabold text-blue-200 uppercase tracking-wider">Current Token</span>
+              <Ticket className="w-5 h-5 text-blue-200" />
+            </div>
+            <div className="text-4xl font-black font-mono tracking-tight">A023</div>
+            <p className="text-xs text-blue-100 font-bold">General Medicine</p>
+          </div>
+
+          {/* Card 2: Waiting Time */}
+          <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">Waiting Time</span>
+              <Clock className="w-5 h-5 text-cyan-600" />
+            </div>
+            <div className="text-4xl font-black text-slate-900 font-mono tracking-tight">~15 mins</div>
+            <p className="text-xs text-slate-500 font-semibold">(2 patients ahead)</p>
+          </div>
+
+          {/* Card 3: Date */}
+          <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">Date</span>
+              <Calendar className="w-5 h-5 text-purple-600" />
+            </div>
+            <div className="text-2xl font-black text-slate-900 tracking-tight">21 Sep 2026</div>
+            <p className="text-xs text-slate-500 font-semibold">Today, 10:30 AM</p>
+          </div>
+
+          {/* Card 4: Status */}
+          <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">Status</span>
+              <Activity className="w-5 h-5 text-amber-600 animate-pulse" />
+            </div>
+            <div className="text-2xl font-black text-amber-600 tracking-tight">Waiting</div>
+            <p className="text-xs text-emerald-600 font-bold">● Live Updates</p>
+          </div>
+        </div>
+
+        {/* QUICK ACTIONS */}
+        <div className="space-y-4">
+          <h2 className="text-lg font-black text-slate-900 tracking-tight">Quick Actions</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <Link
+              href="/patient/queue/get-token"
+              className="bg-white p-6 rounded-3xl border border-slate-200/80 hover:border-blue-300 transition-all duration-300 shadow-xs hover:shadow-lg group cursor-pointer"
+            >
+              <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold mb-4 group-hover:scale-110 transition-transform">
+                <Ticket className="w-6 h-6" />
+              </div>
+              <h3 className="text-base font-extrabold text-slate-900">Book New Token</h3>
+              <p className="text-xs text-slate-500 mt-1 font-medium">Get a token for your preferred department</p>
+            </Link>
+
+            <Link
+              href="/patient/queue"
+              className="bg-white p-6 rounded-3xl border border-slate-200/80 hover:border-blue-300 transition-all duration-300 shadow-xs hover:shadow-lg group cursor-pointer"
+            >
+              <div className="w-12 h-12 rounded-2xl bg-cyan-50 text-cyan-600 flex items-center justify-center font-bold mb-4 group-hover:scale-110 transition-transform">
+                <Clock className="w-6 h-6" />
+              </div>
+              <h3 className="text-base font-extrabold text-slate-900">View My Tokens</h3>
+              <p className="text-xs text-slate-500 mt-1 font-medium">Check your upcoming and past tokens</p>
+            </Link>
+
+            <Link
+              href="/patient/queue"
+              className="bg-white p-6 rounded-3xl border border-slate-200/80 hover:border-blue-300 transition-all duration-300 shadow-xs hover:shadow-lg group cursor-pointer"
+            >
+              <div className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold mb-4 group-hover:scale-110 transition-transform">
+                <Activity className="w-6 h-6" />
+              </div>
+              <h3 className="text-base font-extrabold text-slate-900">Track Live Queue</h3>
+              <p className="text-xs text-slate-500 mt-1 font-medium">See real-time queue status live</p>
+            </Link>
+
+            <Link
+              href="/#departments"
+              className="bg-white p-6 rounded-3xl border border-slate-200/80 hover:border-blue-300 transition-all duration-300 shadow-xs hover:shadow-lg group cursor-pointer"
+            >
+              <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold mb-4 group-hover:scale-110 transition-transform">
+                <Building2 className="w-6 h-6" />
+              </div>
+              <h3 className="text-base font-extrabold text-slate-900">Explore Departments</h3>
+              <p className="text-xs text-slate-500 mt-1 font-medium">View all available departments</p>
+            </Link>
+          </div>
+        </div>
+
+        {/* CURRENT QUEUE LARGE CARD */}
         <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-md space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-100">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-sky-50 text-sky-600 flex items-center justify-center font-bold text-xl border border-sky-200">
+              <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xl border border-blue-200">
                 <Ticket className="w-6 h-6" />
               </div>
               <div>
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Active Ticket</span>
-                <h2 className="text-xl font-extrabold text-slate-900">General Medicine Queue</h2>
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Active Queue</span>
+                <h2 className="text-xl font-extrabold text-slate-900">General Medicine</h2>
               </div>
             </div>
 
             <div className="flex items-center gap-3">
-              <PriorityBadge priority={patientToken?.priority || 'NORMAL'} />
-              <StatusBadge status={patientToken?.status || 'WAITING'} size="md" />
+              <PriorityBadge priority="NORMAL" />
+              <StatusBadge status="WAITING" size="md" />
             </div>
           </div>
 
-          {/* Token Numbers Row */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-center">
-            <div className="bg-gradient-to-br from-sky-50 to-blue-50/50 rounded-2xl p-6 border border-sky-200/80">
-              <span className="text-xs font-bold text-sky-800 uppercase tracking-widest">YOUR TOKEN</span>
-              <div className="text-5xl font-black text-slate-900 font-mono mt-2 tracking-tight">
-                {patientToken?.display_token || 'GM-029'}
-              </div>
-              <p className="text-xs text-slate-500 font-medium mt-1">Dr. Rajesh Sharma (Room 102)</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-center">
+            <div className="bg-blue-50/80 p-4 rounded-2xl border border-blue-100">
+              <span className="text-xs font-extrabold text-blue-700 uppercase">Your Token</span>
+              <div className="text-3xl font-black text-blue-900 font-mono mt-1">A023</div>
             </div>
-
-            <div className="bg-slate-50 rounded-2xl p-6 border border-slate-200">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">CURRENT TOKEN SERVING</span>
-              <div className="text-5xl font-black text-slate-900 font-mono mt-2 tracking-tight">
-                {currentToken?.display_token || 'GM-024'}
-              </div>
-              <p className="text-xs text-emerald-600 font-bold mt-1">● In Consultation Now</p>
+            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+              <span className="text-xs font-extrabold text-slate-500 uppercase">Currently Serving</span>
+              <div className="text-3xl font-black text-slate-900 font-mono mt-1">A021</div>
+            </div>
+            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+              <span className="text-xs font-extrabold text-slate-500 uppercase">Your Position</span>
+              <div className="text-3xl font-black text-slate-900 font-mono mt-1">2</div>
+            </div>
+            <div className="bg-cyan-50/80 p-4 rounded-2xl border border-cyan-100">
+              <span className="text-xs font-extrabold text-cyan-700 uppercase">Estimated Wait</span>
+              <div className="text-3xl font-black text-cyan-900 font-mono mt-1">15 min</div>
             </div>
           </div>
 
-          {/* Waiting Metrics Cards */}
-          <WaitingTimeCard
-            patientsAhead={patientsAhead}
-            estimatedWaitMinutes={estimatedWait}
-            position={position}
-          />
-
-          {/* Queue Timeline */}
-          <div className="pt-4">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-extrabold text-slate-700 uppercase tracking-wider">
-                Live Queue Progress Timeline
-              </span>
-              <Link href="/patient/queue" className="text-xs font-bold text-sky-600 hover:underline">
-                Full Queue View →
-              </Link>
+          {/* Progress Indicator */}
+          <div className="space-y-2 pt-2">
+            <div className="flex justify-between text-xs font-extrabold text-slate-600">
+              <span>Queue Progress</span>
+              <span>75% Completed</span>
             </div>
-            <QueueTimeline tokens={tokens} currentTokenId={currentToken?.id} patientTokenId={patientToken?.display_token} />
+            <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
+              <div className="h-full bg-gradient-to-r from-blue-600 to-cyan-500 rounded-full w-3/4 transition-all duration-500" />
+            </div>
+          </div>
+
+          {/* Queue Timeline Component */}
+          <div className="pt-2">
+            <QueueTimeline tokens={tokens} currentTokenId={currentToken?.id} patientTokenId="GM-029" />
           </div>
         </div>
 
-        {/* QUICK NAVIGATION GRID */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Link
-            href="/patient/queue/get-token"
-            className="bg-white p-6 rounded-3xl border border-slate-200/80 hover:border-sky-300 transition-all shadow-xs hover:shadow-lg group"
-          >
-            <div className="w-12 h-12 rounded-2xl bg-sky-50 text-sky-600 flex items-center justify-center font-bold mb-4 group-hover:scale-110 transition-transform">
-              <Ticket className="w-6 h-6" />
-            </div>
-            <h3 className="text-base font-extrabold text-slate-900">Get New Token</h3>
-            <p className="text-xs text-slate-500 mt-1">Generate a new queue token for any department</p>
-          </Link>
+        {/* RECENT ACTIVITY TABLE */}
+        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xs space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-extrabold text-slate-900">Recent Activity</h2>
+            <Link href="/patient/history" className="text-xs font-extrabold text-blue-600 hover:underline">
+              View All →
+            </Link>
+          </div>
 
-          <Link
-            href="/patient/queue"
-            className="bg-white p-6 rounded-3xl border border-slate-200/80 hover:border-sky-300 transition-all shadow-xs hover:shadow-lg group"
-          >
-            <div className="w-12 h-12 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center font-bold mb-4 group-hover:scale-110 transition-transform">
-              <Clock className="w-6 h-6" />
-            </div>
-            <h3 className="text-base font-extrabold text-slate-900">My Live Queue</h3>
-            <p className="text-xs text-slate-500 mt-1">Track your turn in real time with auto updates</p>
-          </Link>
-
-          <Link
-            href="/patient/appointments"
-            className="bg-white p-6 rounded-3xl border border-slate-200/80 hover:border-sky-300 transition-all shadow-xs hover:shadow-lg group"
-          >
-            <div className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold mb-4 group-hover:scale-110 transition-transform">
-              <Calendar className="w-6 h-6" />
-            </div>
-            <h3 className="text-base font-extrabold text-slate-900">Appointments</h3>
-            <p className="text-xs text-slate-500 mt-1">View supporting scheduled hospital visits</p>
-          </Link>
-
-          <Link
-            href="/patient/notifications"
-            className="bg-white p-6 rounded-3xl border border-slate-200/80 hover:border-sky-300 transition-all shadow-xs hover:shadow-lg group"
-          >
-            <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold mb-4 group-hover:scale-110 transition-transform">
-              <Bell className="w-6 h-6" />
-            </div>
-            <h3 className="text-base font-extrabold text-slate-900">Notifications</h3>
-            <p className="text-xs text-slate-500 mt-1">View queue alerts and turn notifications</p>
-          </Link>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="border-b border-slate-100 text-slate-400 uppercase font-extrabold">
+                  <th className="py-3 px-4">Token</th>
+                  <th className="py-3 px-4">Department</th>
+                  <th className="py-3 px-4">Time / Date</th>
+                  <th className="py-3 px-4 text-right">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
+                {recentActivity.map((act, i) => (
+                  <tr key={i} className="hover:bg-slate-50/80 transition-colors">
+                    <td className="py-4 px-4 font-mono font-black text-slate-900">{act.token}</td>
+                    <td className="py-4 px-4">{act.dept}</td>
+                    <td className="py-4 px-4 text-slate-500">{act.time} ({act.date})</td>
+                    <td className="py-4 px-4 text-right">
+                      <StatusBadge status={act.status} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </main>
+
+      <MobileNav />
     </div>
   );
 }

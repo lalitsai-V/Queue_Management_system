@@ -1,228 +1,295 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { PortalSidebar } from '@/components/layout/PortalSidebar';
-import { DoctorQueuePanel } from '@/components/queue/DoctorQueuePanel';
+import { MobileNav } from '@/components/layout/MobileNav';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { PriorityBadge } from '@/components/ui/PriorityBadge';
-import { globalQueueStore } from '@/lib/queue/engine';
 import { playHospitalChime } from '@/lib/audio/chime';
-import { Token } from '@/types/queue';
-import { Stethoscope, Users, CheckCircle2, Clock, Play, Pause, RefreshCw, Search, Volume2 } from 'lucide-react';
+import { Stethoscope, Users, CheckCircle2, Clock, Volume2, ArrowRight, User, Activity, ChevronRight, Pill, Play } from 'lucide-react';
 
 export default function DoctorDashboardPage() {
-  const [tokens, setTokens] = useState<Token[]>([...globalQueueStore.getTokensForDoctor('doc-sharma')]);
-  const [isPaused, setIsPaused] = useState(false);
-  const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'overview' | 'current'>('overview');
 
-  const activeToken = tokens.find((t) => t.status === 'CALLED' || t.status === 'IN_CONSULTATION');
-  const waitingTokens = tokens.filter((t) => t.status === 'WAITING');
-  const completedTokens = tokens.filter((t) => t.status === 'COMPLETED');
-  const skippedTokens = tokens.filter((t) => t.status === 'SKIPPED' || t.status === 'ABSENT');
+  const defaultQueueMembers = [
+    { token: 'A024', name: 'Priya Sharma', age: 29, gender: 'Female', mrn: 'MRN-2026-9012', wait: 'In Room', priority: 'NORMAL' as const },
+    { token: 'A025', name: 'Karthik R', age: 34, gender: 'Male', mrn: 'MRN-2026-9045', wait: '5 mins', priority: 'NORMAL' as const },
+    { token: 'A026', name: 'Sneha M', age: 45, gender: 'Female', mrn: 'MRN-2026-9102', wait: '12 mins', priority: 'PRIORITY' as const },
+    { token: 'A027', name: 'Arjun S', age: 52, gender: 'Male', mrn: 'MRN-2026-9150', wait: '20 mins', priority: 'NORMAL' as const },
+    { token: 'A028', name: 'Deepa Patel', age: 38, gender: 'Female', mrn: 'MRN-2026-9200', wait: '28 mins', priority: 'EMERGENCY' as const },
+    { token: 'A029', name: 'Vikram Singh', age: 50, gender: 'Male', mrn: 'MRN-2026-9240', wait: '35 mins', priority: 'NORMAL' as const },
+  ];
 
-  const triggerMessage = (msg: string) => {
-    setActionMessage(msg);
-    setTimeout(() => setActionMessage(null), 3500);
-  };
+  const [activePatientIdx, setActivePatientIdx] = useState(0);
+  const [patientsToday, setPatientsToday] = useState(12);
+  const [completed, setCompleted] = useState(8);
+  const [waiting, setWaiting] = useState(5);
+  const [simMessage, setSimMessage] = useState<string | null>(null);
 
-  const handleCallNext = () => {
-    const res = globalQueueStore.callNextPatient('doc-sharma');
-    if (res.success && res.token) {
-      setTokens([...globalQueueStore.getTokensForDoctor('doc-sharma')]);
-      playHospitalChime();
-      triggerMessage(`Called next patient: ${res.token.display_token} (Audio Bell Chime Sounded 🔔)`);
-    } else {
-      triggerMessage(res.message || 'No waiting patients in queue');
-    }
-  };
+  const currentPatient = defaultQueueMembers[activePatientIdx];
+  const upcomingPatients = defaultQueueMembers.filter((_, idx) => idx !== activePatientIdx);
 
-  const handleStartConsultation = () => {
-    if (activeToken) {
-      globalQueueStore.startConsultation(activeToken.id);
-      setTokens([...globalQueueStore.getTokensForDoctor('doc-sharma')]);
-      triggerMessage(`Started consultation for ${activeToken.display_token}`);
-    }
-  };
-
-  const handleCompleteConsultation = () => {
-    if (activeToken) {
-      globalQueueStore.completeConsultation(activeToken.id);
-      setTokens([...globalQueueStore.getTokensForDoctor('doc-sharma')]);
-      triggerMessage(`Consultation completed for ${activeToken.display_token}`);
-    }
-  };
-
-  const handleSkipPatient = () => {
-    if (activeToken) {
-      globalQueueStore.updateTokenStatus(activeToken.id, 'SKIPPED');
-      setTokens([...globalQueueStore.getTokensForDoctor('doc-sharma')]);
-      triggerMessage(`Token ${activeToken.display_token} skipped`);
-    }
-  };
-
-  const handleMarkAbsent = () => {
-    if (activeToken) {
-      globalQueueStore.updateTokenStatus(activeToken.id, 'ABSENT');
-      setTokens([...globalQueueStore.getTokensForDoctor('doc-sharma')]);
-      triggerMessage(`Token ${activeToken.display_token} marked absent`);
-    }
-  };
-
-  const handleRecallPatient = () => {
-    if (activeToken) {
-      playHospitalChime();
-      triggerMessage(`Re-broadcasting audio chime for ${activeToken.display_token} 🔔`);
-    }
-  };
-
-  const handleTogglePause = () => {
-    const paused = globalQueueStore.toggleQueuePause('doc-sharma');
-    setIsPaused(paused);
-    triggerMessage(paused ? 'Queue temporarily paused' : 'Queue resumed');
+  const handleNextPatient = () => {
+    playHospitalChime();
+    const nextIdx = (activePatientIdx + 1) % defaultQueueMembers.length;
+    setCompleted((prev) => prev + 1);
+    setWaiting((prev) => Math.max(0, prev - 1));
+    setActivePatientIdx(nextIdx);
+    setSimMessage(`Called Next Patient: Token ${defaultQueueMembers[nextIdx].token} (${defaultQueueMembers[nextIdx].name})! Audio bell chime sounded 🔔`);
+    setTimeout(() => setSimMessage(null), 3000);
   };
 
   return (
-    <div className="min-h-screen flex bg-slate-50 font-sans">
-      <PortalSidebar role="DOCTOR" userName="Dr. Rajesh Sharma" userEmail="dr.sharma@hospital.org" />
+    <div className="min-h-screen flex bg-slate-50 font-sans pb-16 md:pb-0">
+      <PortalSidebar role="DOCTOR" userName="Dr. Aditya Kumar" userEmail="dr.aditya@smartcare.org" />
 
-      <main className="flex-1 p-6 lg:p-10 overflow-y-auto space-y-8 max-w-7xl">
-        {/* Doctor Header Banner */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 sm:p-8 rounded-3xl border border-slate-200/80 shadow-xs">
+      <main className="flex-1 p-4 sm:p-6 lg:p-10 overflow-y-auto space-y-8 max-w-7xl mx-auto">
+        {/* DOCTOR HEADER */}
+        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-sky-500 to-blue-600 text-white flex items-center justify-center font-bold text-2xl shadow-md">
-              <Stethoscope className="w-7 h-7" />
+            <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-blue-600 to-cyan-500 text-white flex items-center justify-center font-black text-2xl shadow-md shrink-0">
+              <Stethoscope className="w-8 h-8" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">General Medicine</span>
-                <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-bold border border-emerald-200">
-                  ● ACTIVE ROOM 102
+                <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Dr. Aditya Kumar</h1>
+                <span className="px-3 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-xs font-black border border-emerald-200">
+                  ● Room 102
                 </span>
               </div>
-              <h1 className="text-2xl sm:text-3xl font-black text-slate-900">Dr. Rajesh Sharma</h1>
-              <p className="text-xs text-slate-500 font-medium">Attending Physician • General Medicine</p>
+              <p className="text-xs sm:text-sm text-slate-500 font-bold mt-0.5">General Medicine • Senior Consultant</p>
             </div>
           </div>
 
-          <div className="text-right">
-            <span className="text-xs font-bold text-slate-400 block uppercase">Queue Date</span>
-            <span suppressHydrationWarning className="text-sm font-extrabold text-slate-800">{new Date().toDateString()}</span>
+          <div className="text-right text-xs font-bold text-slate-400">
+            <span className="block uppercase tracking-wider">Current Time</span>
+            <span className="text-sm font-extrabold text-slate-800">Mon, 21 Sep 2026 • 10:32 AM</span>
           </div>
         </div>
 
-        {/* Action Message Toast */}
-        {actionMessage && (
-          <div className="bg-slate-900 text-white px-6 py-3.5 rounded-2xl font-bold text-xs shadow-xl animate-in fade-in slide-in-from-top duration-200 flex items-center justify-between border border-slate-700">
+        {/* TOP TAB SWITCHER */}
+        <div className="flex items-center gap-3 border-b border-slate-200/80 pb-2">
+          <button
+            onClick={() => setActiveTab('overview')}
+            className={`px-6 py-3 rounded-2xl font-black text-xs transition-all cursor-pointer ${
+              activeTab === 'overview'
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            Dashboard Overview
+          </button>
+
+          <button
+            onClick={() => setActiveTab('current')}
+            className={`px-6 py-3 rounded-2xl font-black text-xs transition-all cursor-pointer flex items-center gap-2 ${
+              activeTab === 'current'
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            <Stethoscope className="w-4 h-4" /> Current Patient Tab ({currentPatient.token})
+          </button>
+        </div>
+
+        {simMessage && (
+          <div className="bg-slate-900 text-white px-6 py-3.5 rounded-2xl font-bold text-xs shadow-xl animate-in fade-in slide-in-from-top duration-200 flex items-center justify-between">
             <span className="flex items-center gap-2">
-              <Volume2 className="w-4 h-4 text-sky-400" /> {actionMessage}
+              <Volume2 className="w-4 h-4 text-cyan-400 animate-pulse" /> {simMessage}
             </span>
-            <span className="text-sky-400 text-[11px]">Realtime broadcast sent</span>
           </div>
         )}
 
-        {/* Key Metrics Stats Row */}
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-          <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-2xs">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Current Token</span>
-            <div className="text-3xl font-black text-sky-700 font-mono mt-1">
-              {activeToken?.display_token || '--'}
+        {/* OVERVIEW TAB */}
+        {activeTab === 'overview' && (
+          <>
+            {/* DASHBOARD STATISTICS CARDS */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">Patients Today</span>
+                  <Users className="w-5 h-5 text-blue-600" />
+                </div>
+                <div className="text-4xl font-black text-slate-900 tracking-tight">{patientsToday}</div>
+                <span className="text-xs text-slate-400 font-medium">Scheduled & OPD Tokens</span>
+              </div>
+
+              <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">Completed</span>
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                </div>
+                <div className="text-4xl font-black text-emerald-600 tracking-tight">{completed}</div>
+                <span className="text-xs text-emerald-600 font-bold">Consultations finished</span>
+              </div>
+
+              <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">Waiting</span>
+                  <Clock className="w-5 h-5 text-amber-600" />
+                </div>
+                <div className="text-4xl font-black text-amber-600 tracking-tight">{waiting}</div>
+                <span className="text-xs text-amber-600 font-bold">In queue now</span>
+              </div>
+
+              <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">Avg Consultation Time</span>
+                  <Activity className="w-5 h-5 text-cyan-600" />
+                </div>
+                <div className="text-4xl font-black text-slate-900 font-mono tracking-tight">~8 min</div>
+                <span className="text-xs text-slate-400 font-medium">Per patient pace</span>
+              </div>
             </div>
-            <span className="text-[11px] font-bold text-slate-500 block mt-1">Active in Room</span>
-          </div>
 
-          <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-2xs">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Waiting Patients</span>
-            <div className="text-3xl font-black text-slate-900 mt-1">{waitingTokens.length}</div>
-            <span className="text-[11px] font-bold text-amber-600 block mt-1">In Queue</span>
-          </div>
+            {/* MAIN SECTION GRID: CURRENT PATIENT & UPCOMING PATIENTS */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+              {/* CURRENT PATIENT CARD */}
+              <div className="lg:col-span-7 bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-md space-y-6">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                  <span className="text-xs font-black text-blue-600 uppercase tracking-widest bg-blue-50 px-3.5 py-1.5 rounded-full border border-blue-200">
+                    CURRENT PATIENT
+                  </span>
+                  <span className="text-xs font-extrabold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+                    ● In Room Now
+                  </span>
+                </div>
 
-          <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-2xs">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Completed Today</span>
-            <div className="text-3xl font-black text-emerald-600 mt-1">{completedTokens.length + 18}</div>
-            <span className="text-[11px] font-bold text-emerald-600 block mt-1">Consultations</span>
-          </div>
+                <div className="bg-gradient-to-br from-blue-600 to-indigo-700 text-white rounded-3xl p-8 shadow-xl space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-xs font-extrabold text-blue-200 uppercase tracking-widest block">Token Number</span>
+                      <div className="text-6xl font-black text-blue-600 font-mono tracking-tight mt-1">{currentPatient.token}</div>
+                    </div>
 
-          <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-2xs">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Skipped / Absent</span>
-            <div className="text-3xl font-black text-slate-700 mt-1">{skippedTokens.length + 2}</div>
-            <span className="text-[11px] font-bold text-slate-500 block mt-1">Recorded</span>
-          </div>
+                    <div className="w-16 h-16 rounded-2xl bg-white text-blue-600 border border-blue-200 flex items-center justify-center font-black text-2xl shadow-sm">
+                      <User className="w-8 h-8" />
+                    </div>
+                  </div>
 
-          <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-2xs col-span-2 lg:col-span-1">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Avg Pace</span>
-            <div className="text-3xl font-black text-slate-900 mt-1">8 min</div>
-            <span className="text-[11px] font-bold text-slate-500 block mt-1">Per Patient</span>
-          </div>
-        </div>
+                  <div className="pt-4 border-t border-blue-100 grid grid-cols-3 gap-4 text-xs font-bold text-slate-700">
+                    <div>
+                      <span className="text-slate-400 font-extrabold uppercase block text-[10px]">Patient Name</span>
+                      <span className="text-slate-900 font-black text-sm block mt-0.5">{currentPatient.name}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 font-extrabold uppercase block text-[10px]">Age</span>
+                      <span className="text-slate-900 font-black text-sm block mt-0.5">{currentPatient.age}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 font-extrabold uppercase block text-[10px]">Gender</span>
+                      <span className="text-slate-900 font-black text-sm block mt-0.5">{currentPatient.gender}</span>
+                    </div>
+                  </div>
+                </div>
 
-        {/* DOCTOR CONTROL PANEL */}
-        <DoctorQueuePanel
-          currentPatientToken={activeToken}
-          isQueuePaused={isPaused}
-          onCallNext={handleCallNext}
-          onStartConsultation={handleStartConsultation}
-          onCompleteConsultation={handleCompleteConsultation}
-          onSkipPatient={handleSkipPatient}
-          onMarkAbsent={handleMarkAbsent}
-          onRecallPatient={handleRecallPatient}
-          onTogglePauseQueue={handleTogglePause}
-          waitingCount={waitingTokens.length}
-        />
+                {/* BUTTONS: View Details & Next Patient */}
+                <div className="flex items-center gap-4 pt-2">
+                  <Link
+                    href="/doctor/current-patient"
+                    className="flex-1 py-3.5 px-6 rounded-2xl border-2 border-slate-200 hover:bg-slate-50 text-slate-800 font-extrabold text-xs shadow-xs text-center transition-all cursor-pointer"
+                  >
+                    View Details Tab →
+                  </Link>
 
-        {/* TODAY'S QUEUE TABLE */}
-        <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-md space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-extrabold text-slate-900">Today's Assigned Patient Queue</h3>
-            <span className="text-xs font-bold text-slate-500">Sorted by Priority & Time</span>
-          </div>
+                  <button
+                    type="button"
+                    onClick={handleNextPatient}
+                    className="flex-1 py-3.5 px-6 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs shadow-lg shadow-blue-600/25 flex items-center justify-center gap-2 transition-all cursor-pointer"
+                  >
+                    Next Patient →
+                  </button>
+                </div>
+              </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase tracking-wider font-extrabold">
-                <tr>
-                  <th className="p-3.5">Token</th>
-                  <th className="p-3.5">Patient Name</th>
-                  <th className="p-3.5">Priority</th>
-                  <th className="p-3.5">Status</th>
-                  <th className="p-3.5">Created At</th>
-                  <th className="p-3.5 text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
-                {tokens.map((token) => (
-                  <tr key={token.id} className={token.id === activeToken?.id ? 'bg-sky-50/60 font-bold' : 'hover:bg-slate-50/50'}>
-                    <td className="p-3.5 font-mono font-black text-slate-900 text-sm">{token.display_token}</td>
-                    <td className="p-3.5 font-bold">{token.patient?.profile?.full_name || 'Patient Name'}</td>
-                    <td className="p-3.5">
-                      <PriorityBadge priority={token.priority} />
-                    </td>
-                    <td className="p-3.5">
-                      <StatusBadge status={token.status} size="sm" />
-                    </td>
-                    <td className="p-3.5 text-slate-500">{new Date(token.created_at).toLocaleTimeString()}</td>
-                    <td className="p-3.5 text-right">
-                      {token.status === 'WAITING' && (
-                        <button
-                          onClick={() => {
-                            globalQueueStore.updateTokenStatus(token.id, 'CALLED');
-                            token.status = 'CALLED';
-                            setTokens([...globalQueueStore.getTokensForDoctor('doc-sharma')]);
-                            playHospitalChime();
-                            triggerMessage(`Called ${token.display_token} 🔔`);
-                          }}
-                          className="px-3 py-1.5 bg-sky-600 text-white rounded-xl text-xs font-black hover:bg-sky-700 shadow-xs"
-                        >
-                          Call Token 🔔
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+              {/* DEFAULT 5 UPCOMING PATIENTS LIST */}
+              <div className="lg:col-span-5 bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-md space-y-6">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                  <h2 className="text-lg font-black text-slate-900">Upcoming Patients (5 Members)</h2>
+                  <span className="text-xs font-extrabold text-slate-400">{upcomingPatients.length} Waiting</span>
+                </div>
+
+                <div className="space-y-3">
+                  {upcomingPatients.map((pat) => (
+                    <div
+                      key={pat.token}
+                      onClick={() => {
+                        const idx = defaultQueueMembers.findIndex((p) => p.token === pat.token);
+                        if (idx !== -1) {
+                          playHospitalChime();
+                          setActivePatientIdx(idx);
+                          setSimMessage(`Switched Active Patient to Token ${pat.token} (${pat.name})`);
+                          setTimeout(() => setSimMessage(null), 3000);
+                        }
+                      }}
+                      className="p-4 rounded-2xl border border-slate-200/80 bg-slate-50/70 hover:bg-white hover:shadow-md transition-all flex items-center justify-between text-xs font-bold cursor-pointer"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-blue-600 text-white font-mono font-black flex items-center justify-center">
+                          {pat.token}
+                        </div>
+                        <div>
+                          <span className="text-slate-900 font-extrabold block text-sm">{pat.name}</span>
+                          <span className="text-slate-400 font-medium">Token: {pat.token} • {pat.age}Y</span>
+                        </div>
+                      </div>
+
+                      <span className="text-slate-500 font-mono bg-white px-3 py-1 rounded-xl border border-slate-200">
+                        {pat.wait}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* DEDICATED CURRENT PATIENT TAB IN DASHBOARD */}
+        {activeTab === 'current' && (
+          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-md space-y-6">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <span className="text-xs font-black text-blue-600 uppercase tracking-widest bg-blue-50 px-3.5 py-1.5 rounded-full border border-blue-200">
+                CURRENT PATIENT FULL SPECS
+              </span>
+              <span className="text-xs font-extrabold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+                ● In Room 102 Now
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-xs font-bold">
+              <div className="bg-blue-50/80 p-6 rounded-2xl border border-blue-100 space-y-2">
+                <span className="text-slate-400 font-extrabold uppercase block text-[10px]">Active Token & Name</span>
+                <div className="text-4xl font-black text-blue-600 font-mono">{currentPatient.token}</div>
+                <div className="text-xl font-black text-slate-900 mt-1">{currentPatient.name}</div>
+                <p className="text-slate-500 font-medium">{currentPatient.age} Yrs • {currentPatient.gender} • {currentPatient.mrn}</p>
+              </div>
+
+              <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 space-y-2">
+                <span className="text-slate-400 font-extrabold uppercase block text-[10px]">Vitals Telemetry</span>
+                <div className="grid grid-cols-2 gap-2 text-slate-800 pt-1">
+                  <div>BP: <strong className="text-slate-900">120/80 mmHg</strong></div>
+                  <div>Heart Rate: <strong className="text-rose-600">78 bpm</strong></div>
+                  <div>Temp: <strong className="text-amber-600">99.4 °F</strong></div>
+                  <div>SpO2: <strong className="text-cyan-600">98%</strong></div>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-4 flex items-center justify-between">
+              <Link
+                href="/doctor/current-patient"
+                className="px-6 py-3.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs shadow-md flex items-center gap-2"
+              >
+                Open Full Clinical Workspace Page <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
           </div>
-        </div>
+        )}
       </main>
+
+      <MobileNav />
     </div>
   );
 }

@@ -4,10 +4,10 @@ import React, { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { PortalSidebar } from '@/components/layout/PortalSidebar';
-import { TokenCard } from '@/components/queue/TokenCard';
+import { MobileNav } from '@/components/layout/MobileNav';
 import { globalQueueStore } from '@/lib/queue/engine';
 import { Token, TokenPriority } from '@/types/queue';
-import { Ticket, ArrowRight, ArrowLeft, CheckCircle2, ShieldAlert, Sparkles, Stethoscope, UserCheck } from 'lucide-react';
+import { Ticket, ArrowRight, CheckCircle2, Calendar, Clock, Stethoscope, UserCheck, Heart, Sparkles, Building2, Eye, Baby, Smile, PhoneCall, Activity, ChevronRight } from 'lucide-react';
 
 function GetTokenContent() {
   const router = useRouter();
@@ -18,62 +18,71 @@ function GetTokenContent() {
   const [selectedDeptId, setSelectedDeptId] = useState<string>(
     globalQueueStore.departments.find((d) => d.code === initialDeptCode)?.id || globalQueueStore.departments[0].id
   );
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>('10:30 AM (Now Serving)');
   const [selectedDocId, setSelectedDocId] = useState<string>(globalQueueStore.doctors[0].id);
   const [priority, setPriority] = useState<TokenPriority>('NORMAL');
   const [generatedToken, setGeneratedToken] = useState<Token | null>(null);
   const [loading, setLoading] = useState(false);
+  const [calendarAdded, setCalendarAdded] = useState(false);
 
-  const selectedDept = globalQueueStore.departments.find((d) => d.id === selectedDeptId);
-  const availableDoctors = globalQueueStore.doctors.filter((d) => d.department_id === selectedDeptId);
-  const selectedDoc = globalQueueStore.doctors.find((d) => d.id === selectedDocId) || availableDoctors[0];
+  const departmentsData = [
+    { id: 'dept-gm', code: 'GM', name: 'General Medicine', doctor: 'Dr. Rajesh Sharma', availability: 'Available Now', avgWait: '~15 mins', icon: Stethoscope },
+    { id: 'dept-car', code: 'CAR', name: 'Cardiology', doctor: 'Dr. Anita Kumar', availability: 'Available Now', avgWait: '~20 mins', icon: Heart },
+    { id: 'dept-der', code: 'DER', name: 'Dermatology', doctor: 'Dr. Meera Iyer', availability: 'Available Today', avgWait: '~10 mins', icon: Activity },
+    { id: 'dept-ped', code: 'PED', name: 'Pediatrics', doctor: 'Dr. Sunita Gupta', availability: 'Available Now', avgWait: '~12 mins', icon: Baby },
+    { id: 'dept-ort', code: 'ORT', name: 'Orthopedics', doctor: 'Dr. Vikram Verma', availability: 'Available Now', avgWait: '~18 mins', icon: Building2 },
+    { id: 'dept-ent', code: 'ENT', name: 'ENT', doctor: 'Dr. Sanjay Nambiar', availability: 'Available Today', avgWait: '~8 mins', icon: PhoneCall },
+    { id: 'dept-oph', code: 'OPH', name: 'Ophthalmology', doctor: 'Dr. Kavita Reddy', availability: 'Available Now', avgWait: '~14 mins', icon: Eye },
+    { id: 'dept-gyn', code: 'GYN', name: 'Gynecology', doctor: 'Dr. Shalini Saxena', availability: 'Available Now', avgWait: '~15 mins', icon: Smile },
+  ];
 
-  const handleGenerateToken = () => {
+  const selectedDeptObj = departmentsData.find((d) => d.id === selectedDeptId) || departmentsData[0];
+  const selectedDocObj = globalQueueStore.doctors.find((d) => d.id === selectedDocId) || globalQueueStore.doctors[0];
+
+  const handleBookToken = () => {
     setLoading(true);
     setTimeout(() => {
       const newToken = globalQueueStore.generateToken(selectedDeptId, selectedDocId, 'pat-1', priority);
+      newToken.display_token = 'A023';
       setGeneratedToken(newToken);
       setLoading(false);
-      setStep(5);
-    }, 600);
+      setStep(4); // Final Confirmation Step
+    }, 500);
   };
 
   return (
-    <div className="min-h-screen flex bg-slate-50 font-sans">
-      <PortalSidebar role="PATIENT" userName="Rohan Mehta" userEmail="rohan.mehta@gmail.com" />
+    <div className="min-h-screen flex bg-slate-50 font-sans pb-16 md:pb-0">
+      <PortalSidebar role="PATIENT" userName="Lalit" userEmail="lalit@example.com" />
 
-      <main className="flex-1 p-6 lg:p-10 overflow-y-auto space-y-8 max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="text-center space-y-2">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-sky-500 to-blue-600 text-white flex items-center justify-center font-black text-2xl mx-auto shadow-md">
-            <Ticket className="w-7 h-7" />
-          </div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Generate Queue Token</h1>
-          <p className="text-xs text-slate-500 font-medium">Select department and doctor to issue your official digital token</p>
+      <main className="flex-1 p-4 sm:p-6 lg:p-10 overflow-y-auto space-y-8 max-w-4xl mx-auto">
+        {/* Title */}
+        <div className="space-y-1">
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Book a New Token</h1>
+          <p className="text-xs sm:text-sm text-slate-500 font-medium">Select a department and preferred time to get your token.</p>
         </div>
 
-        {/* Step Indicator */}
-        {step < 5 && (
-          <div className="flex items-center justify-between bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs">
+        {/* Multi-Step Indicator */}
+        {step <= 3 && (
+          <div className="flex items-center justify-between bg-white p-4 rounded-3xl border border-slate-200/80 shadow-xs">
             {[
-              { num: 1, label: 'Department' },
-              { num: 2, label: 'Doctor' },
-              { num: 3, label: 'Priority' },
-              { num: 4, label: 'Confirm' },
+              { num: 1, label: 'Select Department' },
+              { num: 2, label: 'Choose Time' },
+              { num: 3, label: 'Confirm' },
             ].map((s) => (
-              <div key={s.num} className="flex items-center gap-2">
+              <div key={s.num} className="flex items-center gap-3">
                 <div
-                  className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black transition-all ${
+                  className={`w-9 h-9 rounded-2xl flex items-center justify-center text-xs font-black transition-all ${
                     step === s.num
-                      ? 'bg-sky-600 text-white shadow-sm'
+                      ? 'bg-blue-600 text-white shadow-md'
                       : step > s.num
                       ? 'bg-emerald-500 text-white'
                       : 'bg-slate-100 text-slate-400'
                   }`}
                 >
-                  {step > s.num ? <CheckCircle2 className="w-4 h-4" /> : s.num}
+                  {step > s.num ? <CheckCircle2 className="w-5 h-5" /> : s.num}
                 </div>
                 <span
-                  className={`text-xs font-bold hidden sm:inline ${
+                  className={`text-xs font-extrabold hidden sm:inline ${
                     step === s.num ? 'text-slate-900' : 'text-slate-400'
                   }`}
                 >
@@ -86,228 +95,209 @@ function GetTokenContent() {
 
         {/* STEP 1: SELECT DEPARTMENT */}
         {step === 1 && (
-          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-md space-y-6">
-            <h2 className="text-xl font-black text-slate-900">Step 1: Select Clinical Department</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {globalQueueStore.departments.map((dept) => (
-                <div
-                  key={dept.id}
-                  onClick={() => {
-                    setSelectedDeptId(dept.id);
-                    const docs = globalQueueStore.doctors.filter((d) => d.department_id === dept.id);
-                    if (docs.length > 0) setSelectedDocId(docs[0].id);
-                  }}
-                  className={`p-5 rounded-2xl border-2 cursor-pointer transition-all flex items-center justify-between ${
-                    selectedDeptId === dept.id
-                      ? 'bg-sky-50/70 border-sky-500 shadow-md'
-                      : 'bg-white border-slate-200 hover:border-slate-300'
-                  }`}
-                >
-                  <div>
-                    <span className="px-2.5 py-0.5 rounded-md bg-slate-100 font-mono text-xs font-black text-slate-700">
-                      {dept.code}
-                    </span>
-                    <h3 className="text-base font-extrabold text-slate-900 mt-2">{dept.name}</h3>
-                    <p className="text-xs text-slate-500 mt-1">Avg consultation: {dept.average_consultation_minutes} min</p>
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {departmentsData.map((dept) => {
+                const IconComp = dept.icon;
+                const isSelected = selectedDeptId === dept.id;
+
+                return (
+                  <div
+                    key={dept.id}
+                    onClick={() => setSelectedDeptId(dept.id)}
+                    className={`bg-white rounded-3xl p-6 border-2 cursor-pointer transition-all duration-200 flex flex-col justify-between space-y-4 shadow-xs ${
+                      isSelected
+                        ? 'border-blue-600 ring-4 ring-blue-500/10 shadow-md'
+                        : 'border-slate-200/80 hover:border-slate-300'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-bold ${
+                        isSelected ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-600'
+                      }`}>
+                        <IconComp className="w-6 h-6" />
+                      </div>
+                      <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-extrabold border border-emerald-200">
+                        {dept.availability}
+                      </span>
+                    </div>
+
+                    <div>
+                      <h3 className="text-base font-black text-slate-900">{dept.name}</h3>
+                      <p className="text-xs text-slate-500 font-bold mt-0.5">{dept.doctor}</p>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs text-slate-500 font-extrabold pt-2 border-t border-slate-100">
+                      <span>Wait Time:</span>
+                      <span className="text-blue-600 font-mono">{dept.avgWait}</span>
+                    </div>
                   </div>
-                  {selectedDeptId === dept.id && <CheckCircle2 className="w-6 h-6 text-sky-600" />}
-                </div>
-              ))}
+                );
+              })}
             </div>
 
-            <button
-              onClick={() => setStep(2)}
-              className="w-full py-4 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-extrabold text-sm shadow-md flex items-center justify-center gap-2"
-            >
-              Continue to Select Doctor <ArrowRight className="w-4 h-4" />
-            </button>
+            <div className="flex justify-end">
+              <button
+                onClick={() => setStep(2)}
+                className="px-8 py-3.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-black text-sm shadow-lg shadow-blue-600/25 flex items-center gap-2 cursor-pointer"
+              >
+                Choose Time <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         )}
 
-        {/* STEP 2: SELECT DOCTOR */}
+        {/* STEP 2: CHOOSE TIME & DOCTOR */}
         {step === 2 && (
           <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-md space-y-6">
-            <h2 className="text-xl font-black text-slate-900">
-              Step 2: Select Doctor for {selectedDept?.name}
-            </h2>
+            <h2 className="text-xl font-black text-slate-900">Step 2: Choose Consultation Time</h2>
 
-            <div className="space-y-3">
-              {availableDoctors.length > 0 ? (
-                availableDoctors.map((doc) => (
-                  <div
-                    key={doc.id}
-                    onClick={() => setSelectedDocId(doc.id)}
-                    className={`p-5 rounded-2xl border-2 cursor-pointer transition-all flex items-center justify-between ${
-                      selectedDocId === doc.id
-                        ? 'bg-sky-50/70 border-sky-500 shadow-md'
-                        : 'bg-white border-slate-200 hover:border-slate-300'
+            <div className="space-y-4">
+              <span className="text-xs font-extrabold text-slate-500 uppercase tracking-wider block">Available Slots Today</span>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {[
+                  '10:30 AM (Now Serving)',
+                  '11:00 AM Slot',
+                  '11:30 AM Slot',
+                  '12:00 PM Slot',
+                  '02:30 PM Slot',
+                  '03:00 PM Slot',
+                ].map((slot) => (
+                  <button
+                    key={slot}
+                    type="button"
+                    onClick={() => setSelectedTimeSlot(slot)}
+                    className={`py-3.5 px-4 rounded-2xl text-xs font-extrabold transition-all border cursor-pointer ${
+                      selectedTimeSlot === slot
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-md'
+                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                     }`}
                   >
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-2xl bg-sky-100 text-sky-700 flex items-center justify-center font-extrabold text-lg">
-                        <UserCheck className="w-6 h-6" />
-                      </div>
-                      <div>
-                        <h3 className="text-base font-extrabold text-slate-900">
-                          {doc.profile?.full_name || 'Dr. Rajesh Sharma'}
-                        </h3>
-                        <p className="text-xs text-slate-500">{doc.specialization}</p>
-                        <span className="text-[11px] font-bold text-sky-700 bg-sky-50 px-2 py-0.5 rounded border border-sky-200 mt-1 inline-block">
-                          {doc.room_number}
-                        </span>
-                      </div>
-                    </div>
-                    {selectedDocId === doc.id && <CheckCircle2 className="w-6 h-6 text-sky-600" />}
-                  </div>
-                ))
-              ) : (
-                <div className="p-6 text-center text-slate-500 font-bold bg-slate-50 rounded-2xl">
-                  No specific doctors listed for this department. Default queue attending will be assigned.
-                </div>
-              )}
+                    {slot}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 pt-4">
               <button
                 onClick={() => setStep(1)}
-                className="py-3.5 px-6 rounded-xl border border-slate-300 text-slate-700 font-bold text-sm"
+                className="px-6 py-3.5 rounded-2xl border-2 border-slate-200 text-slate-700 font-extrabold text-xs hover:bg-slate-50 cursor-pointer"
               >
                 Back
               </button>
               <button
                 onClick={() => setStep(3)}
-                className="flex-1 py-3.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-extrabold text-sm shadow-md flex items-center justify-center gap-2"
+                className="flex-1 py-3.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs shadow-md flex items-center justify-center gap-2 cursor-pointer"
               >
-                Continue to Priority <ArrowRight className="w-4 h-4" />
+                Continue to Confirm <ArrowRight className="w-4 h-4" />
               </button>
             </div>
           </div>
         )}
 
-        {/* STEP 3: PRIORITY SELECTION */}
+        {/* STEP 3: CONFIRM DETAILS */}
         {step === 3 && (
           <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-md space-y-6">
-            <h2 className="text-xl font-black text-slate-900">Step 3: Select Queue Priority Level</h2>
+            <h2 className="text-xl font-black text-slate-900">Step 3: Confirm Token Details</h2>
 
-            <div className="space-y-4">
-              {[
-                {
-                  id: 'NORMAL',
-                  title: 'Standard Normal Queue',
-                  desc: 'Standard first-in, first-out patient consultation queue.',
-                  color: 'border-slate-200',
-                },
-                {
-                  id: 'PRIORITY',
-                  title: 'Priority Patient (Senior Citizen / Disabled)',
-                  desc: 'Expedited processing for senior citizens, expectant mothers, or patients with physical disabilities.',
-                  color: 'border-amber-300 bg-amber-50/50',
-                },
-                {
-                  id: 'EMERGENCY',
-                  title: 'Emergency Medical Triage',
-                  desc: 'Immediate clinical priority for severe acute pain, trauma, or emergency medical condition.',
-                  color: 'border-rose-400 bg-rose-50/50',
-                },
-              ].map((p) => (
-                <div
-                  key={p.id}
-                  onClick={() => setPriority(p.id as TokenPriority)}
-                  className={`p-5 rounded-2xl border-2 cursor-pointer transition-all flex items-center justify-between ${
-                    priority === p.id
-                      ? 'bg-sky-50/80 border-sky-600 shadow-md ring-2 ring-sky-200'
-                      : 'bg-white border-slate-200 hover:border-slate-300'
-                  }`}
-                >
-                  <div>
-                    <h3 className="text-base font-extrabold text-slate-900">{p.title}</h3>
-                    <p className="text-xs text-slate-600 mt-1">{p.desc}</p>
-                  </div>
-                  {priority === p.id && <CheckCircle2 className="w-6 h-6 text-sky-600 shrink-0" />}
-                </div>
-              ))}
+            <div className="bg-slate-50 rounded-2xl p-6 space-y-4 border border-slate-200 text-xs font-bold text-slate-700">
+              <div className="flex justify-between border-b border-slate-200/80 pb-3">
+                <span className="text-slate-500">Department</span>
+                <span className="text-slate-900 font-extrabold">{selectedDeptObj.name} ({selectedDeptObj.code})</span>
+              </div>
+              <div className="flex justify-between border-b border-slate-200/80 pb-3">
+                <span className="text-slate-500">Attending Doctor</span>
+                <span className="text-slate-900 font-extrabold">{selectedDeptObj.doctor}</span>
+              </div>
+              <div className="flex justify-between border-b border-slate-200/80 pb-3">
+                <span className="text-slate-500">Selected Time</span>
+                <span className="text-blue-600 font-extrabold">{selectedTimeSlot}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Estimated Waiting Time</span>
+                <span className="text-cyan-600 font-extrabold">{selectedDeptObj.avgWait}</span>
+              </div>
             </div>
 
             <div className="flex items-center gap-4">
               <button
                 onClick={() => setStep(2)}
-                className="py-3.5 px-6 rounded-xl border border-slate-300 text-slate-700 font-bold text-sm"
+                className="px-6 py-3.5 rounded-2xl border-2 border-slate-200 text-slate-700 font-extrabold text-xs hover:bg-slate-50 cursor-pointer"
               >
                 Back
               </button>
               <button
-                onClick={() => setStep(4)}
-                className="flex-1 py-3.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-extrabold text-sm shadow-md flex items-center justify-center gap-2"
-              >
-                Confirm Token Details <ArrowRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* STEP 4: CONFIRMATION */}
-        {step === 4 && (
-          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-md space-y-6">
-            <h2 className="text-xl font-black text-slate-900">Step 4: Confirm Token Request</h2>
-
-            <div className="bg-slate-50 p-6 rounded-2xl space-y-3 text-sm border border-slate-200">
-              <div className="flex justify-between border-b pb-2">
-                <span className="text-slate-500 font-medium">Patient Name:</span>
-                <span className="font-extrabold text-slate-900">Rohan Mehta</span>
-              </div>
-              <div className="flex justify-between border-b pb-2">
-                <span className="text-slate-500 font-medium">Department:</span>
-                <span className="font-extrabold text-sky-700">{selectedDept?.name} ({selectedDept?.code})</span>
-              </div>
-              <div className="flex justify-between border-b pb-2">
-                <span className="text-slate-500 font-medium">Assigned Doctor:</span>
-                <span className="font-extrabold text-slate-900">{selectedDoc?.profile?.full_name || 'Dr. Rajesh Sharma'}</span>
-              </div>
-              <div className="flex justify-between border-b pb-2">
-                <span className="text-slate-500 font-medium">Room Location:</span>
-                <span className="font-bold text-slate-800">{selectedDoc?.room_number || 'Room 102'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500 font-medium">Priority Level:</span>
-                <span className="font-bold text-amber-700">{priority}</span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => setStep(3)}
-                className="py-3.5 px-6 rounded-xl border border-slate-300 text-slate-700 font-bold text-sm"
-              >
-                Back
-              </button>
-              <button
-                onClick={handleGenerateToken}
+                onClick={handleBookToken}
                 disabled={loading}
-                className="flex-1 py-4 rounded-xl bg-gradient-to-r from-sky-600 to-blue-600 hover:from-sky-700 hover:to-blue-700 text-white font-black text-base shadow-lg shadow-sky-600/25 flex items-center justify-center gap-2"
+                className="flex-1 py-4 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 text-white font-black text-sm shadow-lg shadow-blue-600/25 flex items-center justify-center gap-2 cursor-pointer"
               >
-                {loading ? 'Generating Token...' : 'Generate Official Digital Token Now'}
+                {loading ? 'Generating Token...' : 'Confirm & Issue Token Now'}
               </button>
             </div>
           </div>
         )}
 
-        {/* STEP 5: DIGITAL TOKEN RECEIPT */}
-        {step === 5 && generatedToken && (
-          <div className="space-y-6 animate-in fade-in zoom-in duration-300">
-            <div className="text-center space-y-1">
-              <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 font-extrabold text-xs uppercase tracking-wider inline-block">
-                ✓ TOKEN SUCCESSFULLY GENERATED
-              </span>
-              <h2 className="text-2xl font-black text-slate-900">Your Official Token Slip</h2>
+        {/* STEP 4: FINAL TOKEN CONFIRMATION PAGE */}
+        {step === 4 && (
+          <div className="bg-white rounded-3xl p-8 sm:p-12 border border-slate-200/80 shadow-2xl text-center space-y-8 animate-in fade-in zoom-in duration-300">
+            <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center font-black mx-auto">
+              <CheckCircle2 className="w-10 h-10" />
             </div>
 
-            <TokenCard
-              token={generatedToken}
-              onViewLiveQueue={() => router.push('/patient/queue')}
-            />
+            <div className="space-y-1">
+              <h2 className="text-2xl sm:text-3xl font-black text-slate-900">Token Booked Successfully!</h2>
+              <p className="text-xs text-slate-500 font-medium">Your token details are below.</p>
+            </div>
+
+            {/* Token Card Details */}
+            <div className="bg-gradient-to-br from-slate-50 to-blue-50/50 rounded-3xl p-8 border border-blue-100 max-w-md mx-auto space-y-6 shadow-sm">
+              <div className="space-y-1">
+                <span className="text-xs font-extrabold text-slate-500 uppercase tracking-widest block">Token Number</span>
+                <div className="text-6xl font-black text-blue-600 font-mono tracking-tight">A023</div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 text-left text-xs font-bold pt-4 border-t border-slate-200/80">
+                <div>
+                  <span className="text-slate-400 font-extrabold uppercase block text-[10px]">Department</span>
+                  <span className="text-slate-900 block mt-0.5">{selectedDeptObj.name}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 font-extrabold uppercase block text-[10px]">Doctor</span>
+                  <span className="text-slate-900 block mt-0.5">{selectedDeptObj.doctor}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 font-extrabold uppercase block text-[10px]">Date & Time</span>
+                  <span className="text-slate-900 block mt-0.5">21 Sep 2026, 10:30 AM</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 font-extrabold uppercase block text-[10px]">Estimated Waiting Time</span>
+                  <span className="text-cyan-600 block mt-0.5">~15 mins</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 max-w-md mx-auto pt-2">
+              <Link
+                href="/patient/queue"
+                className="w-full sm:flex-1 py-3.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs shadow-md flex items-center justify-center gap-2 cursor-pointer"
+              >
+                View Live Queue
+              </Link>
+              <button
+                type="button"
+                onClick={() => setCalendarAdded(true)}
+                className="w-full sm:flex-1 py-3.5 rounded-2xl bg-white border-2 border-slate-200 hover:bg-slate-50 text-slate-800 font-extrabold text-xs shadow-xs flex items-center justify-center gap-2 cursor-pointer"
+              >
+                {calendarAdded ? '✓ Added to Calendar' : 'Add to Calendar'}
+              </button>
+            </div>
           </div>
         )}
       </main>
+
+      <MobileNav />
     </div>
   );
 }
